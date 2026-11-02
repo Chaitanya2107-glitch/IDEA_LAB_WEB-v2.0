@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      mongo:
+        image: mongo:7
+        ports: ["27017:27017"]
+      postgres:
+        # Only for the Supabase -> MongoDB migration test.
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TEST_MONGODB_URI: mongodb://127.0.0.1:27017
+      TEST_PG_URL: postgresql://postgres:test@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Typecheck (frontend + server)
+        run: npm run typecheck
+      - name: API, security and migration tests (real MongoDB + Postgres)
+        run: npm test
+      - name: Build
+        run: npm run build
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+      - name: Docker image builds
+        run: docker build -t idea-lab:ci .
+      - name: Compose file is valid
+        run: cp .env.example .env && sed -i 's/^MONGO_ROOT_PASSWORD=$/MONGO_ROOT_PASSWORD=x/; s/^MONGO_APP_PASSWORD=$/MONGO_APP_PASSWORD=x/' .env && docker compose config -q

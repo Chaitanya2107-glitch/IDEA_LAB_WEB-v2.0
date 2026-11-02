@@ -1,0 +1,21 @@
+# Dependencies (install per platform with `npm ci`)
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Logs / OS / editor
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local settings and backups of them (the template .env.example is committed)
+.env.*
+!.env.example
+
+# Local uploads and data
+data/

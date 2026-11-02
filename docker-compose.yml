@@ -1,0 +1,67 @@
+# Whole portal on one AWS EC2 instance: the Node app and MongoDB, with data on the
+# instance's EBS volume. nginx on the host terminates HTTPS and proxies to 127.0.0.1:3001.
+#
+#   cp .env.example .env    # fill in the values
+#   docker compose up -d --build
+#
+# MongoDB is not published on any host port; only the app container can reach it.
+
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:?set MONGO_ROOT_USER in .env}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?set MONGO_ROOT_PASSWORD in .env}
+      MONGO_INITDB_DATABASE: ${MONGODB_DB:-idealab}
+      MONGODB_AUDIT_DB: ${MONGODB_AUDIT_DB:-idealab_audit}
+      MONGODB_GOOGLE_AUDIT_DB: ${MONGODB_GOOGLE_AUDIT_DB:-idealab_audit_google}
+      MONGODB_PASSWORD_AUDIT_DB: ${MONGODB_PASSWORD_AUDIT_DB:-idealab_audit_password}
+      MONGO_APP_USER: ${MONGO_APP_USER:?set MONGO_APP_USER in .env}
+      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:?set MONGO_APP_PASSWORD in .env}
+    volumes:
+      - mongo-data:/data/db
+      - ./deploy/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks: [internal]
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
+
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: "3001"
+      # The app connects with its own least-privilege user (created by deploy/mongo-init.js).
+      MONGODB_URI: mongodb://${MONGO_APP_USER}:${MONGO_APP_PASSWORD}@mongo:27017/${MONGODB_DB:-idealab}?authSource=${MONGODB_DB:-idealab}
+      MONGODB_DB: ${MONGODB_DB:-idealab}
+      MONGODB_AUDIT_DB: ${MONGODB_AUDIT_DB:-idealab_audit}
+      MONGODB_GOOGLE_AUDIT_DB: ${MONGODB_GOOGLE_AUDIT_DB:-idealab_audit_google}
+      MONGODB_PASSWORD_AUDIT_DB: ${MONGODB_PASSWORD_AUDIT_DB:-idealab_audit_password}
+      STORAGE_DIR: /data/uploads
+    volumes:
+      - uploads:/data/uploads
+    ports:
+      - "127.0.0.1:3001:3001"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks: [internal]
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
+
+volumes:
+  mongo-data:
+  uploads:
+
+networks:
+  internal:

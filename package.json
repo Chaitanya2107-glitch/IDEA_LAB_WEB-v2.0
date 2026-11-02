@@ -1,0 +1,71 @@
+{
+  "name": "aicte-idea-lab",
+  "private": true,
+  "version": "6.1.2",
+  "type": "module",
+  "engines": {
+    "node": ">=20.11"
+  },
+  "scripts": {
+    "dev": "vite",
+    "dev:server": "tsx watch server/index.ts",
+    "build": "vite build && npm run build:server",
+    "build:client": "vite build",
+    "build:server": "tsc -p tsconfig.server.json",
+    "start": "node build/server/index.js",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.server.json --noEmit",
+    "typecheck:server": "tsc -p tsconfig.server.json --noEmit",
+    "test": "tsx --test server/test/*.test.ts",
+    "preview": "vite preview",
+    "seed:demo": "tsx scripts/seed-demo.ts",
+    "mock:microsoft": "tsx scripts/mock-microsoft.ts",
+    "mock:google": "tsx scripts/mock-google.ts",
+    "create-admin": "node build/scripts/create-admin.js",
+    "migrate:supabase": "node build/scripts/migrate-from-supabase.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-sesv2": "^3.1142.0",
+    "cors": "^2.8.5",
+    "dotenv": "^18.0.4",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.0.1",
+    "helmet": "^8.1.0",
+    "jose": "^6.2.12",
+    "jsonwebtoken": "^9.0.3",
+    "mongodb": "^6.21.0",
+    "pg": "^8.23.0"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
+  },
+  "devDependencies": {
+    "@fontsource/inter": "^5.3.0",
+    "@fontsource/plus-jakarta-sans": "^5.3.0",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.5.0",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^22.19.3",
+    "@types/pg": "^8.23.1",
+    "@vitejs/plugin-react": "^5.0.0",
+    "autoprefixer": "^10.6.1",
+    "framer-motion": "^12.35.2",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
+    "lucide-react": "^0.555.0",
+    "postcss": "^8.5.28",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1",
+    "react-router-dom": "^7.10.0",
+    "sharp": "^0.35.5",
+    "svgo": "^4.0.1",
+    "tailwindcss": "^3.4.19",
+    "three": "^0.160.0",
+    "three-stdlib": "^2.29.0",
+    "tsx": "^4.23.15",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0",
+    "vite-plugin-image-optimizer": "^2.0.3"
+  }
+}

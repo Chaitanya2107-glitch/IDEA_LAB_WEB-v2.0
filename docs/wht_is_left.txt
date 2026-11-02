@@ -1,0 +1,181 @@
+Your project already has the main AWS deployment files. What remains is production configuration, university access/approvals, credentials, and final testing. Your current setup is still for local testing.
+
+These are the actual gaps I confirmed:
+
+| Item | Current state |
+|---|---|
+| Website address | PUBLIC_URL points to localhost |
+| Microsoft sign-in | Using the local mock |
+| Google sign-in | Using the local mock |
+| Razorpay | All three required settings are missing |
+| Secrets management | .env is tracked in Git |
+| Resource centre | Download/tutorial/software destinations are unfinished |
+| Footer social links | Still point to # |
+
+Other settings being present locally does not establish that their production services are configured.
+
+1. University AWS allocation — university IT
+
+Ask IT to provide:
+
+- Access to the university AWS account through named accounts with appropriate permissions.
+- An existing server allocation, or an EC2 instance: the project’s baseline is Ubuntu 24.04, t3.small, 30 GB gp3 storage.
+- Confirmation that the allocated machine has sufficient spare capacity.
+- A static public address or university-managed public entry point.
+- A billing owner and confirmation of what the university’s AWS arrangement actually covers.
+
+An existing AWS account does not automatically cover additional resource charges. Credits apply only to eligible charges under their terms. AWS credit guidance
+
+2. Domain, networking and HTTPS — university IT / team
+
+You need:
+
+- An approved address, such as idealab.reva.edu.in.
+- Its DNS record pointing to the allocated server.
+- Public access on ports 80 and 443.
+- SSH restricted to authorised university/VPN addresses.
+- Ports 3001 and 27017 kept private.
+- nginx configured for the actual domain.
+- An HTTPS certificate, automatic renewal, and a renewal check.
+
+The nginx template exists; installing it alone does not configure the certificate.
+
+3. Real Microsoft sign-in — university IT
+
+Replace the mock with a university-owned Microsoft Entra application:
+
+- Tenant ID → MS_TENANT_ID
+- Application ID → MS_CLIENT_ID
+- New client secret → MS_CLIENT_SECRET
+- Approved web callback:
+  https://<domain>/api/auth/microsoft/callback
+- Institutional consent/access approval as required by REVA’s tenant policies.
+- A named owner and reminder for secret renewal.
+
+Remove the local MS_AUTHORITY override. Do not run mock:microsoft on production.
+
+4. Real Google sign-in — team / institutional account owner
+
+If external visitors will use Google:
+
+- Create a university-owned Google OAuth web application.
+- Configure its consent screen and required publishing/verification steps.
+- Register:
+  https://<domain>/api/auth/google/callback
+- Set fresh GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.
+- Remove the local GOOGLE_AUTHORITY override.
+
+Google sign-in can remain disabled if you choose not to offer it.
+
+5. Working email — university IT / team
+
+Email is needed for account verification and password resets:
+
+- Verify the sending domain/address in Amazon SES.
+- Configure the supplied DNS verification/DKIM records.
+- Obtain SES production access in the selected region.
+- Set the real EMAIL_FROM and AWS_REGION.
+- Attach an EC2 IAM role permitting the required SES operations.
+- Test delivery to real REVA and external mailboxes.
+
+SES sandbox access limits delivery to verified recipients. SES production-access requirements
+
+For Docker to obtain instance-role credentials through IMDSv2, configure the appropriate metadata options; AWS recommends a hop limit of 2 for container environments. AWS container guidance
+
+6. Live payments — university accounts / team
+
+To enable online 3D-print and PCB payments:
+
+- University-approved Razorpay merchant account and completed KYC.
+- Approved settlement bank account.
+- RAZORPAY_KEY_ID
+- RAZORPAY_KEY_SECRET
+- RAZORPAY_WEBHOOK_SECRET
+- Webhook URL:
+  https://<domain>/api/payments/razorpay/webhook
+- Events: payment.captured and order.paid.
+- Approved prices, refund process, tax treatment and receipt format.
+- A successful live payment, webhook confirmation and refund test.
+
+Your checkout warning is expected until those keys are configured.
+
+7. Clean production configuration — team
+
+Create the server configuration from .env.example (.env.example), rather than copying your local .env.
+
+Set or verify:
+
+- NODE_ENV=production — already set by the Docker deployment.
+- PUBLIC_URL=https://<actual-domain>
+- A new random JWT_SECRET.
+- New MongoDB root/application passwords.
+- Real identity, email and payment settings.
+- Correct database names and persistent upload storage.
+
+Fix .env tracking before adding production credentials. It is currently tracked, and .gitignore excludes .env.* but does not exclude .env itself. Adding an ignore rule alone will not untrack an existing file.
+
+The deployment documentation also records previously exposed legacy credentials. Revoke/rotate those at their providers; removing files does not revoke credentials.
+
+8. Deploy the application and database — team / IT
+
+The Dockerfile and Compose configuration already exist. Deployment still requires:
+
+- Docker Engine, Compose, nginx, Git and certificate tooling installed.
+- The approved release checked out and built.
+- Production MongoDB users and audit permissions initialised.
+- Persistent database/upload volumes.
+- Emergency administrator created.
+- Actual staff accounts assigned approved roles.
+- Containers healthy and /api/health reporting database connectivity.
+- Restart after server reboot verified.
+
+For an existing MongoDB volume, verify the current initialisation script has been applied; first-start scripts do not automatically rerun on existing volumes.
+
+9. Production data and content — lab / team
+
+- Decide whether existing Supabase data or local records need migration.
+- Back up the source, rehearse migration, then verify user/order counts and files.
+- Use approved production inventory, material prices, events and content.
+- Avoid copying demo accounts or test transactions into production.
+- Complete or remove unavailable resource links and placeholder social links.
+- Confirm the institution’s privacy notice, payment/refund information and support contact.
+
+10. Backups and maintenance — IT / team
+
+The backup script exists, but it still needs operational setup:
+
+- Scheduled daily execution.
+- AWS CLI installed if using its S3 upload option.
+- BACKUP_S3_URI explicitly available to the scheduled job.
+- Private S3 bucket and narrowly scoped backup permissions.
+- Retention/lifecycle rules and backup encryption.
+- Snapshot scheduling if included in the allocation.
+- A tested restore of database, audit records and uploaded files.
+- Health, disk-space and backup-failure alerts.
+- Named maintenance owners and a renewal calendar.
+
+11. Final release checks — team
+
+Before opening it to everyone:
+
+- Run type checking, automated tests, production build and dependency checks.
+- Build and test the Docker image.
+- Test real Microsoft/Google/email sign-in.
+- Verify staff permissions and private-file access.
+- Test bookings, event capacity, print orders, PCB orders and receipts.
+- Verify payments and email delivery.
+- Test representative uploads and expected traffic on the allocated server.
+- Check mobile use and keyboard navigation.
+- Record university acceptance and hand over operating instructions.
+
+12. Optional AWS services
+
+WAF, CloudFront, GuardDuty, Inspector, Secrets Manager and CloudWatch are not automatically deployed by the existing Compose files.
+
+If selected, they need separate configuration. In particular, Secrets Manager needs a way to supply secrets to the application, and CloudFront/WAF needs appropriate origin restrictions and API/authentication caching rules.
+
+The university can provide equivalent existing services; you do not need duplicate deployments.
+
+Start with AWS allocation, domain approval, Microsoft registration, SES production access and Razorpay KYC—those depend on other teams. The repository’s detailed commands are in DEPLOYMENT.md (DEPLOYMENT.md).
+
+No files changed. I inspected local configuration and deployment files; I have not verified the university’s AWS account or run a fresh production-readiness test suite.
